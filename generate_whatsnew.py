@@ -78,11 +78,18 @@ MANUAL_OVERRIDES = [
         "pm_highlighted": True,
         "pm_order": 1.5,
         "add_links": [("https://www.elastic.co/docs/solutions/observability/ai/agent-builder-observability", "docs")],
+        "feature_tags": ["Agent Builder", "Observability Agent"],
     },
     {
         "match_title": "Workflows",
         "title": "Workflows in Observability - NEW",
         "add_links": [("https://www.elastic.co/docs/explore-analyze/workflows", "docs")],
+        "feature_tags": ["workflows"],
+    },
+    {
+        "match_title": "Amazon Bedrock AgentCore Integration",
+        "add_links": [("https://www.elastic.co/docs/reference/integrations/aws_bedrock_agentcore", "docs")],
+        "feature_tags": [],
     },
 ]
 
@@ -1058,11 +1065,17 @@ def apply_manual_overrides(features: list[Feature]) -> list[Feature]:
                 feat.section_key = override["section_key"]
                 feat.section_name = override.get(
                     "section_name", section_key_to_name.get(override["section_key"], ""))
-                # Reset feature tags to match new section
-                if feat.section_key in _SECTION_DEFAULT_FEATURE_TAG:
+                # Reset feature tags: use explicit override if provided,
+                # otherwise derive from section default
+                if "feature_tags" in override:
+                    feat.feature_tags = list(override["feature_tags"])
+                elif feat.section_key in _SECTION_DEFAULT_FEATURE_TAG:
                     feat.feature_tags = [_SECTION_DEFAULT_FEATURE_TAG[feat.section_key]]
                 else:
                     feat.feature_tags = []
+            elif "feature_tags" in override:
+                # Override feature_tags without changing section
+                feat.feature_tags = list(override["feature_tags"])
             if "title" in override:
                 feat.title = override["title"]
             if "pm_highlighted" in override:

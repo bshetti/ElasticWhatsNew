@@ -23,7 +23,7 @@ Feature freeze: 12/16/2025
 - **Status:** Tech Preview
 - **Owner:** Daniela Tzvetkova
 - **Relevant Links:**
-  - https://github.com/elastic/obs-integration-team/issues/686
+  - https://www.elastic.co/docs/reference/integrations/aws_bedrock_agentcore
 - **TAG** "Agentic Investigations"
 
 
