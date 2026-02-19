@@ -12,97 +12,40 @@ Static site showcasing new features across Elastic Observability releases. Deplo
 ## Prerequisites
 
 - **Python 3.10+**
-- **GitHub CLI** (`gh`) installed and authenticated — or set `GITHUB_TOKEN` env var. The token needs SSO authorization for the `elastic` org to fetch PR labels and media.
-- **PM features markdown file** — this is a required input that lists the PM-highlighted features with descriptions, links, and section TAGs. See [Generating the PM file](#generating-the-pm-features-file) below.
+- **GitHub CLI** (`gh`) installed and authenticated — or set `GITHUB_TOKEN` env var. The token needs SSO authorization for the `elastic` org to fetch PR media.
 
-## Quick start
+## Workflow overview
 
-```bash
-# 1. Generate the PM features file from the Release Input Document PDF
-#    (skip if you already have the .md file)
-./PMhighlightedfeatures/extract_release.sh /path/to/release-input-document.pdf
+Generating the What's New page is a **three-step process**. Each step produces an output file that feeds into the next:
 
-# 2. Add **TAG** fields to the generated .md file (manual step — see format below)
-
-# 3. Generate the What's New page
-./run_generate.sh \
-  --releases 9.2.0,9.2.2,9.2.3,9.3.0 \
-  --pm-file PMhighlightedfeatures/observability-9.3-features.md
+```
+Step 1: PM Features UI  ──→  pm-highlighted-features.md
+Step 2: Feature Selection UI  ──→  selected_features.txt
+Step 3: Generate  ──→  whats-new-generated.html
 ```
 
-## Generating the PM features file
+---
 
-The PM features markdown file is a **required input** for the generator. It lists which features to highlight, their descriptions, and which section they belong to.
+## Step 1 — Create the PM highlighted features file
 
-### From the Release Input Document PDF
-
-The `PMhighlightedfeatures/` folder contains scripts to extract features from the Elastic Observability Release Input Document PDF:
+Use the **PM Highlighted Features UI** to upload the Release Input Document PDF, review extracted features, assign them to sections (TAGs), set release status (GA / Tech Preview), and curate the list.
 
 ```bash
-# Creates a temp venv, installs pdfplumber, extracts features, cleans up
-./PMhighlightedfeatures/extract_release.sh /path/to/release-input-document.pdf
-
-# Or specify output path
-./PMhighlightedfeatures/extract_release.sh /path/to/release-input-document.pdf \
-  PMhighlightedfeatures/observability-9.4-features.md
+# Launch the PM Highlighted Features UI (runs on http://localhost:5003)
+./PMhighlightedfeatures/run_ui.sh
 ```
 
-### Manual edits after extraction
+This starts a Flask web app that:
+1. Lets you upload the Release Input Document PDF
+2. Extracts features using `pdfplumber`
+3. Provides a UI to review, edit, assign TAGs, and set release status
+4. Saves the curated output to `PMhighlightedfeatures/pm-highlighted-features.md`
 
-After extraction, you need to:
+The script creates a Python virtual environment and installs dependencies automatically.
 
-1. **Review and prune** — remove features that shouldn't appear on the What's New page
-2. **Add `**TAG**` fields** — each feature needs a TAG to assign it to a section
-3. **Verify links** — ensure GitHub PR/issue links are correct
+### Output format
 
-See [PM features markdown format](#pm-features-markdown-format) for the expected structure.
-
-## Generating the What's New page
-
-### Using the runner script (recommended)
-
-`run_generate.sh` sets up a temporary venv, resolves the GitHub token, runs the generator, and cleans up:
-
-```bash
-./run_generate.sh \
-  --releases 9.2.0,9.2.2,9.2.3,9.3.0 \
-  --pm-file PMhighlightedfeatures/observability-9.3-features.md
-```
-
-### Using the Python script directly
-
-`generate_whatsnew.py` has no external dependencies (pure Python stdlib):
-
-```bash
-python3 generate_whatsnew.py \
-  --releases 9.2.0,9.2.2,9.2.3,9.3.0 \
-  --pm-file PMhighlightedfeatures/observability-9.3-features.md \
-  --output whats-new-generated.html \
-  --github-token "$(gh auth token)"
-```
-
-### What the script does
-
-1. **Scrapes release notes** from `elastic.co/docs/release-notes/observability` — extracts only "Features and enhancements" for the requested versions
-2. **Enriches via GitHub API** — fetches `Feature:XXX` labels for section categorization and PR body media URLs (images/videos). Falls back to keyword-based categorization if the API is unavailable.
-3. **Downloads media** — saves images and videos from PR bodies to `media/` (skips existing files)
-4. **Maps features to sections** — uses GitHub labels, then keyword heuristics, then manual overrides
-5. **Cross-references PM features** — reads the PM markdown file, matches entries to release notes by PR number or fuzzy name, and adds any unmatched PM features as new cards. The PM file is authoritative.
-6. **Generates HTML** — produces the complete page with dark theme, TOC, section headers, feature cards, media, and lightbox
-
-### CLI flags
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--releases` | *(required)* | Comma-separated version list (e.g. `9.2.0,9.3.0`) |
-| `--pm-file` | `PMhighlightedfeatures/observability-*.md` | PM highlighted features markdown |
-| `--output` | `whats-new.html` | Output HTML file path |
-| `--media-dir` | `media/` | Directory for downloaded media assets |
-| `--github-token` | `$GITHUB_TOKEN` env var | GitHub personal access token |
-
-## PM features markdown format
-
-Each feature in the PM markdown file uses this structure:
+The saved file (`pm-highlighted-features.md`) contains features in this structure:
 
 ```markdown
 ## 1. Feature Name
@@ -128,30 +71,95 @@ The `**TAG**` field maps the feature to a section. Valid values:
 | `"APM"` | Application Performance Monitoring |
 | `"Digital Experience Monitoring"` | Digital Experience Monitoring |
 
-## Manual overrides
+---
 
-The `MANUAL_OVERRIDES` list near the top of `generate_whatsnew.py` allows relocating, renaming, or adding links to specific features without changing the general categorization logic. Each override matches by description substring or exact title. Use this for one-off fixes that don't warrant changing keyword heuristics.
+## Step 2 — Create the selected features file
+
+Use the **Feature Selection UI** to scan the Elastic Observability release notes, browse features by version, and select which ones to include on the What's New page.
+
+```bash
+# Launch the Feature Selection UI (runs on http://localhost:5002)
+./FeatureSelection/run.sh
+```
+
+This starts a Flask web app that:
+1. Scrapes release notes from `elastic.co/docs/release-notes/observability`
+2. Displays features grouped by release version
+3. Lets you select features and set release status (GA / Tech Preview)
+4. Saves the selected features to `FeatureSelection/selected_features.txt`
+
+The script creates a Python virtual environment and installs dependencies automatically.
+
+---
+
+## Step 3 — Generate the What's New page
+
+Once you have both input files from Steps 1 and 2, run the generator to merge them and produce the final HTML page.
+
+```bash
+# Generate using default file paths
+python3 generate_from_selections.py
+
+# Or specify paths explicitly
+python3 generate_from_selections.py \
+    --pm-file PMhighlightedfeatures/pm-highlighted-features.md \
+    --selected-file FeatureSelection/selected_features.txt \
+    --output whats-new-generated.html
+
+# Offline mode (skip GitHub API and media downloads)
+python3 generate_from_selections.py --skip-github --skip-media
+```
+
+### What the script does
+
+1. **Parses PM features** from `pm-highlighted-features.md` — these are shown first in each section (highlighted)
+2. **Parses selected features** from `selected_features.txt` — these are the release note features
+3. **Deduplicates** by PR number — PM features take priority over release note features
+4. **Fetches media via GitHub API** — extracts images and videos from PR bodies
+5. **Downloads media** to `media/` — skips files that already exist locally
+6. **Generates HTML** — produces the complete page with dark theme, TOC, section headers, feature cards, media, and lightbox
+
+### CLI flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--pm-file` | `PMhighlightedfeatures/pm-highlighted-features.md` | PM highlighted features markdown |
+| `--selected-file` | `FeatureSelection/selected_features.txt` | Selected release note features |
+| `--output` | `whats-new-generated.html` | Output HTML file path |
+| `--media-dir` | `media/` | Directory for downloaded media assets |
+| `--github-token` | `$GITHUB_TOKEN` env var | GitHub personal access token |
+| `--skip-github` | off | Skip GitHub API enrichment for media |
+| `--skip-media` | off | Skip media downloads |
+
+### GitHub API & SSO
+
+The `elastic` org repos require SAML/SSO authorization. To fetch media from PR bodies, your GitHub token must have SSO authorization enabled for the `elastic` org. If you don't have this, use `--skip-github --skip-media` — any media files already in `media/` will be reused automatically.
+
+---
 
 ## Deploying to Netlify
 
 ```bash
-# 1. Generate the page
-./run_generate.sh --releases 9.2.0,9.2.2,9.2.3,9.3.0 \
-  --pm-file PMhighlightedfeatures/observability-9.3-features.md
+# 1. Generate the page (Step 3 above)
+python3 generate_from_selections.py
 
-# 2. Create the deployment zip
+# 2. Copy the generated file to the deploy name
+cp whats-new-generated.html whats-new.html
+
+# 3. Create the deployment zip
 zip -r whatsnew-netlify.zip index.html whats-new.html favicon.svg grid-bg.svg media/ \
   -x "media/download_results.json" "media/url_mapping.json"
 
-# 3. Upload whatsnew-netlify.zip to Netlify
+# 4. Upload whatsnew-netlify.zip to Netlify
 ```
 
 ## Project structure
 
 ```
 whatsnew/
-  run_generate.sh                    # Runner script (venv + generate)
-  generate_whatsnew.py               # Main automation script (pure stdlib)
+  generate_from_selections.py        # Main generator (merges PM + selected features → HTML)
+  generate_whatsnew.py               # Legacy generator (scrapes release notes directly)
+  run_generate.sh                    # Legacy runner script
   index.html                         # Key Capabilities landing page
   whats-new.html                     # Generated What's New page (deploy output)
   whats-new-generated.html           # Working copy of generated output
@@ -161,8 +169,16 @@ whatsnew/
     pr-243950-1.png                  # Named as pr-{PR_NUMBER}-{INDEX}.{ext}
     download_results.json            # Media download tracking (not deployed)
     url_mapping.json                 # PR-to-media URL mapping (not deployed)
-  PMhighlightedfeatures/
-    extract_release.sh               # Runner: extracts PM features from PDF (uses venv)
+  PMhighlightedfeatures/             # Step 1: PM feature curation
+    run_ui.sh                        # Launch UI (port 5003)
+    app.py                           # Flask app
+    extract_release.sh               # CLI alternative: extract features from PDF
     extract_release_features.py      # PDF extraction script (requires pdfplumber)
-    observability-9.3-features.md    # PM input: highlighted features with TAGs
+    pm-highlighted-features.md       # Output: curated PM features with TAGs
+    requirements.txt                 # Python dependencies
+  FeatureSelection/                  # Step 2: Release note feature selection
+    run.sh                           # Launch UI (port 5002)
+    app.py                           # Flask app
+    selected_features.txt            # Output: selected release note features
+    requirements.txt                 # Python dependencies
 ```

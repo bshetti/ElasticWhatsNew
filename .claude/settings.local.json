@@ -6,7 +6,8 @@
       "WebFetch(domain:www.elastic.co)",
       "Bash(open:*)",
       "WebFetch(domain:github.com)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "WebSearch"
     ]
   }
 }
