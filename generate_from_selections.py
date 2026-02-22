@@ -1478,8 +1478,8 @@ def main():
     )
     parser.add_argument(
         "--selected-file",
-        default="FeatureSelection/selected_features.txt",
-        help="Path to selected features file (default: FeatureSelection/selected_features.txt)"
+        default="FeatureSelection/selected_features.md",
+        help="Path to selected features markdown (default: FeatureSelection/selected_features.md)"
     )
     parser.add_argument(
         "--output", default="whats-new-generated.html",

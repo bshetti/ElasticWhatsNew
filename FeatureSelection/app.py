@@ -303,12 +303,17 @@ def api_save():
         key = f.get("sectionName") or "Uncategorized"
         by_section.setdefault(key, []).append(f)
 
-    lines = []
-    lines.append("# Selected Features for What's New Page")
-    lines.append(f"# Generated from FeatureSelection UI")
-    lines.append(f"# Releases scanned: {', '.join(sorted({f['releaseTag'] for f in selected}))}")
-    lines.append(f"# Total features selected: {len(selected)}")
-    lines.append("")
+    # Header lines shared by both formats
+    header = [
+        "# Selected Features for What's New Page",
+        "# Generated from FeatureSelection UI",
+        f"# Releases scanned: {', '.join(sorted({f['releaseTag'] for f in selected}))}",
+        f"# Total features selected: {len(selected)}",
+        "",
+    ]
+
+    lines = list(header)       # .txt format (with === separators)
+    md_lines = list(header)    # .md format (clean markdown)
 
     order = 0
     for section_name in [s["name"] for s in SECTIONS] + ["Uncategorized"]:
@@ -321,34 +326,44 @@ def api_save():
         lines.append(f"{'=' * 60}")
         lines.append("")
 
+        md_lines.append(f"## {section_name}")
+        md_lines.append("")
+
         for f in feats:
             order += 1
-            lines.append(f"### {order}. {f['description'][:120]}")
-            lines.append("")
-            lines.append(f"- **Description:** {f['description']}")
+            feature_lines = []
+            feature_lines.append(f"### {order}. {f['description'][:120]}")
+            feature_lines.append("")
+            feature_lines.append(f"- **Description:** {f['description']}")
 
             if f.get("links"):
                 links_str = ", ".join(
                     f"{l['url']}" for l in f["links"]
                 )
-                lines.append(f"- **Links:** {links_str}")
+                feature_lines.append(f"- **Links:** {links_str}")
 
-            lines.append(f"- **Status:** {f.get('status', 'Tech Preview')}")
-            lines.append(f"- **TAG:** \"{section_name}\"")
-            lines.append(f"- **Release:** {f.get('releaseTag', '')}")
+            feature_lines.append(f"- **Status:** {f.get('status', 'Tech Preview')}")
+            feature_lines.append(f"- **TAG:** \"{section_name}\"")
+            feature_lines.append(f"- **Release:** {f.get('releaseTag', '')}")
 
             # Support both featureTags (array) and legacy featureTag (string)
             tags = f.get("featureTags", [])
             if not tags and f.get("featureTag"):
                 tags = [f["featureTag"]]
-            lines.append(f"- **Feature Tags:** {', '.join(tags)}")
-            lines.append("")
+            feature_lines.append(f"- **Feature Tags:** {', '.join(tags)}")
+            feature_lines.append("")
 
-    output_path = os.path.join(os.path.dirname(__file__), "selected_features.txt")
-    with open(output_path, "w") as fp:
+            lines.extend(feature_lines)
+            md_lines.extend(feature_lines)
+
+    output_path_txt = os.path.join(os.path.dirname(__file__), "selected_features.txt")
+    output_path_md = os.path.join(os.path.dirname(__file__), "selected_features.md")
+    with open(output_path_txt, "w") as fp:
         fp.write("\n".join(lines))
+    with open(output_path_md, "w") as fp:
+        fp.write("\n".join(md_lines))
 
-    return jsonify({"saved": len(selected), "path": output_path})
+    return jsonify({"saved": len(selected), "path": output_path_md})
 
 
 if __name__ == "__main__":
