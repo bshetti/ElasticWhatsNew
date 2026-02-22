@@ -20,8 +20,8 @@ Generating the What's New page is a **three-step process**. Each step produces a
 
 ```
 Step 1: PM Features UI  ──→  pm-highlighted-features.md
-Step 2: Feature Selection UI  ──→  selected_features.txt
-Step 3: Generate  ──→  whats-new-generated.html
+Step 2: Feature Selection UI  ──→  selected_features.md
+Step 3: Generate  ──→  whats-new-generated.html  or  whats-new-generated.md
 ```
 
 ---
@@ -86,7 +86,7 @@ This starts a Flask web app that:
 1. Scrapes release notes from `elastic.co/docs/release-notes/observability`
 2. Displays features grouped by release version
 3. Lets you select features and set release status (GA / Tech Preview)
-4. Saves the selected features to `FeatureSelection/selected_features.txt`
+4. Saves the selected features to `FeatureSelection/selected_features.md`
 
 The script creates a Python virtual environment and installs dependencies automatically.
 
@@ -94,7 +94,16 @@ The script creates a Python virtual environment and installs dependencies automa
 
 ## Step 3 — Generate the What's New page
 
-Once you have both input files from Steps 1 and 2, run the generator to merge them and produce the final HTML page.
+Once you have both input files from Steps 1 and 2, you can generate the What's New page in one of two formats:
+
+| Option | Script | Output | Use case |
+|--------|--------|--------|----------|
+| **A** | `generate_from_selections.py` | `whats-new-generated.html` | Final page for Netlify deployment |
+| **B** | `generate_md_from_selections.py` | `whats-new-generated.md` | Markdown for reviewing and editing |
+
+Both scripts share the same pipeline: parse input files → merge & deduplicate → enrich with media → download media → generate output.
+
+### Option A — Generate HTML
 
 ```bash
 # Generate using default file paths
@@ -103,29 +112,49 @@ python3 generate_from_selections.py
 # Or specify paths explicitly
 python3 generate_from_selections.py \
     --pm-file PMhighlightedfeatures/pm-highlighted-features.md \
-    --selected-file FeatureSelection/selected_features.txt \
+    --selected-file FeatureSelection/selected_features.md \
     --output whats-new-generated.html
 
 # Offline mode (skip GitHub API and media downloads)
 python3 generate_from_selections.py --skip-github --skip-media
 ```
 
-### What the script does
+Produces a complete HTML page with dark theme, TOC, section headers, feature cards, media, and lightbox — ready for deployment to Netlify.
 
-1. **Parses PM features** from `pm-highlighted-features.md` — these are shown first in each section (highlighted)
-2. **Parses selected features** from `selected_features.txt` — these are the release note features
-3. **Deduplicates** by PR number — PM features take priority over release note features
-4. **Fetches media via GitHub API** — extracts images and videos from PR bodies
-5. **Downloads media** to `media/` — skips files that already exist locally
-6. **Generates HTML** — produces the complete page with dark theme, TOC, section headers, feature cards, media, and lightbox
+### Option B — Generate Markdown
 
-### CLI flags
+```bash
+# Generate using default file paths
+python3 generate_md_from_selections.py
+
+# Or specify paths explicitly
+python3 generate_md_from_selections.py \
+    --pm-file PMhighlightedfeatures/pm-highlighted-features.md \
+    --selected-file FeatureSelection/selected_features.md \
+    --output whats-new-generated.md
+
+# Offline mode (skip GitHub API and media downloads)
+python3 generate_md_from_selections.py --skip-github --skip-media
+```
+
+Produces a structured Markdown file with the same content, useful for reviewing the feature list, sharing for feedback, or editing before final HTML generation.
+
+### What the scripts do
+
+1. **Parse PM features** from `pm-highlighted-features.md` — these are shown first in each section (highlighted)
+2. **Parse selected features** from `selected_features.md` — these are the release note features
+3. **Deduplicate** by PR number — PM features take priority over release note features
+4. **Fetch media via GitHub API** — extract images and videos from PR bodies
+5. **Download media** to `media/` — skip files that already exist locally
+6. **Generate output** — HTML (Option A) or Markdown (Option B)
+
+### CLI flags (same for both scripts)
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--pm-file` | `PMhighlightedfeatures/pm-highlighted-features.md` | PM highlighted features markdown |
-| `--selected-file` | `FeatureSelection/selected_features.txt` | Selected release note features |
-| `--output` | `whats-new-generated.html` | Output HTML file path |
+| `--selected-file` | `FeatureSelection/selected_features.md` | Selected release note features |
+| `--output` | `.html` or `.md` (depends on script) | Output file path |
 | `--media-dir` | `media/` | Directory for downloaded media assets |
 | `--github-token` | `$GITHUB_TOKEN` env var | GitHub personal access token |
 | `--skip-github` | off | Skip GitHub API enrichment for media |
@@ -157,12 +186,12 @@ zip -r whatsnew-netlify.zip index.html whats-new.html favicon.svg grid-bg.svg me
 
 ```
 whatsnew/
-  generate_from_selections.py        # Main generator (merges PM + selected features → HTML)
-  generate_whatsnew.py               # Legacy generator (scrapes release notes directly)
-  run_generate.sh                    # Legacy runner script
+  generate_from_selections.py        # HTML generator (merges PM + selected features → HTML)
+  generate_md_from_selections.py     # Markdown generator (merges PM + selected features → Markdown)
   index.html                         # Key Capabilities landing page
   whats-new.html                     # Generated What's New page (deploy output)
-  whats-new-generated.html           # Working copy of generated output
+  whats-new-generated.html           # Working copy of generated HTML output
+  whats-new-generated.md             # Working copy of generated Markdown output
   favicon.svg                        # Site favicon
   grid-bg.svg                        # Hero background graphic
   media/                             # Downloaded PR images and videos
@@ -179,6 +208,6 @@ whatsnew/
   FeatureSelection/                  # Step 2: Release note feature selection
     run.sh                           # Launch UI (port 5002)
     app.py                           # Flask app
-    selected_features.txt            # Output: selected release note features
+    selected_features.md              # Output: selected release note features (markdown)
     requirements.txt                 # Python dependencies
 ```
