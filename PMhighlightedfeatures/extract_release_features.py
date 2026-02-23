@@ -19,38 +19,75 @@ import re
 import pdfplumber
 
 
-def extract_tables_from_pdf(pdf_path):
-    """Extract all tables from the PDF, merging continuation rows."""
-    all_rows = []
-    header = None
+def discover_releases_in_pdf(pdf_path):
+    """Scan the PDF and return all release version strings in document order.
+
+    Returns a list like ["9.3", "9.2"] where the first is the topmost (latest).
+    """
+    releases = []
+    seen = set()
 
     with pdfplumber.open(pdf_path) as pdf:
-        found_first_release = False
-        stop_processing = False
         for page in pdf.pages:
-            if stop_processing:
-                break
+            page_text = page.extract_text() or ""
+            for m in re.finditer(r"Observability (\d+\.\d+)", page_text):
+                ver = m.group(1)
+                if ver not in seen:
+                    seen.add(ver)
+                    releases.append(ver)
 
+    return releases
+
+
+def extract_tables_from_pdf(pdf_path, selected_releases=None):
+    """Extract feature tables from the PDF, merging continuation rows.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        selected_releases: Optional list of release version strings (e.g. ["9.3"])
+            to extract. If None, extracts only the first (latest) release
+            for backward compatibility.
+
+    Returns:
+        A dict mapping release version string to list of feature dicts,
+        e.g. {"9.3": [...], "9.2": [...]}.
+        Also returns the release order as encountered in the PDF.
+    """
+    features_by_release: dict[str, list] = {}
+    header = None
+    current_release = None
+    release_order = []
+
+    # If no selection specified, discover and use only the first release
+    if selected_releases is None:
+        all_releases = discover_releases_in_pdf(pdf_path)
+        selected_releases = [all_releases[0]] if all_releases else []
+
+    selected_set = set(selected_releases)
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
             page_text = page.extract_text() or ""
 
-            # Detect release sections (e.g., "Observability 9.2")
-            # If we hit a second release section, process this page's
-            # feature table first (it may have features before the new header),
-            # then stop after this page.
-            release_headers = re.findall(r"Observability \d+\.\d+", page_text)
-            for rh in release_headers:
-                if not found_first_release:
-                    found_first_release = True
-                    current_release = rh
-                elif rh != current_release:
-                    stop_processing = True
-                    break
+            # Detect release sections (e.g., "Observability 9.3")
+            for m in re.finditer(r"Observability (\d+\.\d+)", page_text):
+                ver = m.group(1)
+                if ver != current_release:
+                    current_release = ver
+                    if ver not in features_by_release:
+                        features_by_release[ver] = []
+                        release_order.append(ver)
+
+            # Skip pages for releases we're not interested in
+            if current_release not in selected_set:
+                continue
 
             tables = page.extract_tables()
             if not tables:
                 continue
 
             main_table = tables[0]
+            rows_list = features_by_release.get(current_release, [])
 
             for row in main_table:
                 # Skip rows that are clearly metadata (single-column rows)
@@ -64,14 +101,14 @@ def extract_tables_from_pdf(pdf_path):
                     continue
 
                 # Safe accessor
-                def col(idx):
-                    return row[idx] if idx < len(row) and row[idx] else ""
+                def col(idx, _row=row):
+                    return _row[idx] if idx < len(_row) and _row[idx] else ""
 
                 # Check if this is a continuation row (no feature name)
                 if not col(0) or col(0).strip() == "":
                     # Continuation of previous row — merge key messages and links
-                    if all_rows:
-                        prev = all_rows[-1]
+                    if rows_list:
+                        prev = rows_list[-1]
                         if col(4):
                             prev["key_messages"] += " " + clean(col(4))
                         if col(9):
@@ -92,9 +129,13 @@ def extract_tables_from_pdf(pdf_path):
                     }
                     # Skip the blank template row
                     if feature["name"] and "name your" not in feature["name"].lower():
-                        all_rows.append(feature)
+                        rows_list.append(feature)
 
-    return all_rows
+            features_by_release[current_release] = rows_list
+
+    # Filter to only selected releases that actually had features
+    result = {r: features_by_release[r] for r in release_order if r in selected_set and features_by_release.get(r)}
+    return result
 
 
 def extract_release_metadata(pdf_path):
@@ -272,11 +313,13 @@ def main():
     print(f"Release: {metadata.get('release_number', 'Unknown')}")
     print(f"Date: {metadata.get('release_date', 'Unknown')}")
 
-    features = extract_tables_from_pdf(pdf_path)
+    features_by_release = extract_tables_from_pdf(pdf_path)
+    # Flatten all features (CLI mode: only latest release by default)
+    features = []
+    for ver, feats in features_by_release.items():
+        features.extend(feats)
     print(f"Features extracted: {len(features)}")
 
-    # Stop if this is a second release section (e.g., 9.2 after 9.3)
-    # The PDF may contain multiple releases; we only want the first/latest
     md = features_to_markdown(features, metadata)
 
     # Ensure output directory exists

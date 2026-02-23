@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from extract_release_features import (
     extract_tables_from_pdf,
     extract_release_metadata,
+    discover_releases_in_pdf,
     resolve_status,
     resolve_tier,
 )
@@ -27,6 +28,9 @@ app = Flask(__name__, static_folder="static")
 
 # Max upload size: 500 MB
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
+
+# Cache the uploaded PDF path so we can re-extract for additional releases
+_cached_pdf_path: str | None = None
 
 # ---------------------------------------------------------------------------
 # Configuration — mirrors FeatureSelection constants
@@ -156,32 +160,10 @@ def index():
     return send_from_directory("static", "index.html")
 
 
-@app.route("/api/upload", methods=["POST"])
-def api_upload():
-    """Accept PDF upload, extract features, return JSON."""
-    if "pdf" not in request.files:
-        return jsonify({"error": "No PDF file provided"}), 400
-
-    pdf_file = request.files["pdf"]
-    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
-        return jsonify({"error": "File must be a PDF"}), 400
-
-    # Save to temp file
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        pdf_file.save(tmp.name)
-        tmp_path = tmp.name
-
-    try:
-        metadata = extract_release_metadata(tmp_path)
-        raw_features = extract_tables_from_pdf(tmp_path)
-    finally:
-        os.unlink(tmp_path)
-
-    release_number = metadata.get("release_number", "Unknown")
-
-    # Convert to UI-friendly format
+def _raw_features_to_ui(raw_features: list[dict], release_number: str, start_id: int = 1) -> list[dict]:
+    """Convert raw extracted features into UI-friendly format."""
     features = []
-    for i, f in enumerate(raw_features):
+    for i, f in enumerate(raw_features, start_id):
         name = f["name"]
         raw_status = resolve_status(f["status"])
         # Normalize to the two allowed UI values
@@ -207,7 +189,7 @@ def api_upload():
         feature_tag = SECTION_DEFAULT_FEATURE_TAG.get(sec_key, "")
 
         features.append({
-            "id": i + 1,
+            "id": i,
             "name": name,
             "status": status,
             "tier": tier,
@@ -222,13 +204,88 @@ def api_upload():
             "owner": f["owner"],
             "competitive": f["competitive"],
         })
+    return features
+
+
+@app.route("/api/upload", methods=["POST"])
+def api_upload():
+    """Accept PDF upload, extract features for latest release, return JSON."""
+    global _cached_pdf_path
+
+    if "pdf" not in request.files:
+        return jsonify({"error": "No PDF file provided"}), 400
+
+    pdf_file = request.files["pdf"]
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "File must be a PDF"}), 400
+
+    # Clean up previous cached PDF
+    if _cached_pdf_path and os.path.exists(_cached_pdf_path):
+        try:
+            os.unlink(_cached_pdf_path)
+        except OSError:
+            pass
+
+    # Save to temp file (keep it around for load-releases)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        pdf_file.save(tmp.name)
+        _cached_pdf_path = tmp.name
+
+    metadata = extract_release_metadata(_cached_pdf_path)
+
+    # Discover all releases in the PDF
+    available_releases = discover_releases_in_pdf(_cached_pdf_path)
+    latest_release = available_releases[0] if available_releases else metadata.get("release_number", "Unknown")
+
+    # Extract features for the latest release only
+    features_by_release = extract_tables_from_pdf(_cached_pdf_path, selected_releases=[latest_release])
+    raw_features = features_by_release.get(latest_release, [])
+
+    features = _raw_features_to_ui(raw_features, latest_release)
 
     return jsonify({
         "features": features,
         "metadata": metadata,
         "sections": SECTIONS,
         "sectionNames": SECTION_NAMES,
-        "releaseNumbers": [release_number],
+        "releaseNumbers": [latest_release],
+        "availableReleases": available_releases,
+        "latestRelease": latest_release,
+    })
+
+
+@app.route("/api/load-releases", methods=["POST"])
+def api_load_releases():
+    """Re-extract features for the requested releases from the cached PDF."""
+    global _cached_pdf_path
+
+    if not _cached_pdf_path or not os.path.exists(_cached_pdf_path):
+        return jsonify({"error": "No PDF uploaded. Please upload a PDF first."}), 400
+
+    data = request.get_json(force=True)
+    selected_releases = data.get("releases", [])
+    if not selected_releases:
+        return jsonify({"error": "No releases specified"}), 400
+
+    metadata = extract_release_metadata(_cached_pdf_path)
+
+    features_by_release = extract_tables_from_pdf(_cached_pdf_path, selected_releases=selected_releases)
+
+    # Merge all selected releases into a flat feature list
+    features = []
+    fid = 1
+    for release_ver in selected_releases:
+        raw = features_by_release.get(release_ver, [])
+        converted = _raw_features_to_ui(raw, release_ver, start_id=fid)
+        features.extend(converted)
+        fid += len(converted)
+
+    return jsonify({
+        "features": features,
+        "metadata": metadata,
+        "sections": SECTIONS,
+        "sectionNames": SECTION_NAMES,
+        "releaseNumbers": selected_releases,
     })
 
 
