@@ -251,7 +251,7 @@ def scrape_features(requested_versions: list[str]) -> list[dict]:
                 "releaseTag": version,
                 "featureTag": feature_tag,
                 "status": "Tech Preview",
-                "addToWhatsNew": False,
+                "addToWhatsNew": True,
             })
 
     return features
@@ -312,8 +312,7 @@ def api_save():
         "",
     ]
 
-    lines = list(header)       # .txt format (with === separators)
-    md_lines = list(header)    # .md format (clean markdown)
+    md_lines = list(header)
 
     order = 0
     for section_name in [s["name"] for s in SECTIONS] + ["Uncategorized"]:
@@ -321,45 +320,35 @@ def api_save():
         if not feats:
             continue
 
-        lines.append(f"{'=' * 60}")
-        lines.append(f"## {section_name}")
-        lines.append(f"{'=' * 60}")
-        lines.append("")
-
         md_lines.append(f"## {section_name}")
         md_lines.append("")
 
         for f in feats:
             order += 1
-            feature_lines = []
-            feature_lines.append(f"### {order}. {f['description'][:120]}")
-            feature_lines.append("")
-            feature_lines.append(f"- **Description:** {f['description']}")
+            md_lines.append(f"### {order}. {f['description'][:120]}")
+            md_lines.append("")
+            md_lines.append(f"- **Description:** {f['description']}")
 
             if f.get("links"):
                 links_str = ", ".join(
                     f"{l['url']}" for l in f["links"]
                 )
-                feature_lines.append(f"- **Links:** {links_str}")
+                md_lines.append(f"- **Links:** {links_str}")
 
-            feature_lines.append(f"- **Status:** {f.get('status', 'Tech Preview')}")
-            feature_lines.append(f"- **TAG:** \"{section_name}\"")
-            feature_lines.append(f"- **Release:** {f.get('releaseTag', '')}")
+            md_lines.append(f"- **Status:** {f.get('status', 'Tech Preview')}")
+            md_lines.append(f"- **TAG:** \"{section_name}\"")
+            md_lines.append(f"- **Release:** {f.get('releaseTag', '')}")
 
             # Support both featureTags (array) and legacy featureTag (string)
             tags = f.get("featureTags", [])
             if not tags and f.get("featureTag"):
                 tags = [f["featureTag"]]
-            feature_lines.append(f"- **Feature Tags:** {', '.join(tags)}")
-            feature_lines.append("")
+            md_lines.append(f"- **Feature Tags:** {', '.join(tags)}")
+            md_lines.append("")
 
-            lines.extend(feature_lines)
-            md_lines.extend(feature_lines)
-
-    output_path_txt = os.path.join(os.path.dirname(__file__), "selected_features.txt")
-    output_path_md = os.path.join(os.path.dirname(__file__), "selected_features.md")
-    with open(output_path_txt, "w") as fp:
-        fp.write("\n".join(lines))
+    output_dir = os.environ.get("OUTPUT_DIR", os.path.dirname(__file__))
+    os.makedirs(output_dir, exist_ok=True)
+    output_path_md = os.path.join(output_dir, "selected_features.md")
     with open(output_path_md, "w") as fp:
         fp.write("\n".join(md_lines))
 

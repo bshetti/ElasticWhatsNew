@@ -1,3 +1,5 @@
 media/
+liverun/
+.git-token/
 *.html
 *.zip

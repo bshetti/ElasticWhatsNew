@@ -12,17 +12,49 @@ Static site showcasing new features across Elastic Observability releases. Deplo
 ## Prerequisites
 
 - **Python 3.10+**
-- **GitHub CLI** (`gh`) installed and authenticated — or set `GITHUB_TOKEN` env var. The token needs SSO authorization for the `elastic` org to fetch PR media.
+- **GitHub token** with SSO authorization for the `elastic` org (see [GitHub Token Setup](#github-token-setup) below)
+
+## GitHub Token Setup
+
+The orchestrator needs a GitHub Personal Access Token with SSO authorization for the `elastic` org to fetch PR media (images/videos).
+
+1. Create a token at https://github.com/settings/tokens (needs `repo` scope)
+2. Enable SSO: click **"Configure SSO"** next to the token → **"Authorize"** for `elastic`
+3. Save the token to `.git-token/github.token` in the project root:
+
+```bash
+mkdir -p .git-token
+echo "ghp_your_token_here" > .git-token/github.token
+```
+
+The `.git-token/` directory is in `.gitignore` and will never be committed. If no token is provided, the orchestrator will still work but media extraction from GitHub PRs will be skipped.
 
 ## Workflow overview
 
-Generating the What's New page is a **three-step process**. Each step produces an output file that feeds into the next:
+The recommended way to generate the What's New page is via the **Orchestrator**, which provides a unified UI for the full 5-step workflow:
 
 ```
-Step 1: PM Features UI  ──→  pm-highlighted-features.md
+Step 1: PM Features UI       ──→  pm-highlighted-features.md
 Step 2: Feature Selection UI  ──→  selected_features.md
-Step 3: Generate  ──→  whats-new-generated.html  or  whats-new-generated.md
+Step 3: Merge + Extract Media ──→  features.json + media files
+Step 4: Edit Features         ──→  edited features.json
+Step 5: Generate HTML         ──→  whats-new-generated.html
 ```
+
+All outputs are stored in the `liverun/` directory.
+
+### Quick Start (Orchestrator)
+
+```bash
+./orchestrator/run.sh
+# Opens at http://localhost:5001
+```
+
+This starts all three services (orchestrator on 5001, Feature Selection on 5002, PM Features on 5003) and guides you through each step.
+
+### Manual Workflow
+
+You can also run each step individually:
 
 ---
 
@@ -186,28 +218,31 @@ zip -r whatsnew-netlify.zip index.html whats-new.html favicon.svg grid-bg.svg me
 
 ```
 whatsnew/
+  orchestrator/                      # Unified orchestrator (recommended)
+    run.sh                           # Launch all services (ports 5001, 5002, 5003)
+    app.py                           # Flask orchestrator app
+    static/index.html                # Orchestrator UI
+    requirements.txt                 # Python dependencies
   generate_from_selections.py        # HTML generator (merges PM + selected features → HTML)
   generate_md_from_selections.py     # Markdown generator (merges PM + selected features → Markdown)
   index.html                         # Key Capabilities landing page
-  whats-new.html                     # Generated What's New page (deploy output)
-  whats-new-generated.html           # Working copy of generated HTML output
-  whats-new-generated.md             # Working copy of generated Markdown output
   favicon.svg                        # Site favicon
   grid-bg.svg                        # Hero background graphic
-  media/                             # Downloaded PR images and videos
-    pr-243950-1.png                  # Named as pr-{PR_NUMBER}-{INDEX}.{ext}
-    download_results.json            # Media download tracking (not deployed)
-    url_mapping.json                 # PR-to-media URL mapping (not deployed)
+  .git-token/                        # GitHub token (not committed)
+    github.token                     # SSO-authorized token for elastic org
+  liverun/                           # Working directory (not committed)
+    features.json                    # Merged features with edits
+    whats-new-merged.md              # Generated markdown
+    whats-new-generated.html         # Generated HTML output
+    media/                           # Downloaded PR images and videos
   PMhighlightedfeatures/             # Step 1: PM feature curation
     run_ui.sh                        # Launch UI (port 5003)
     app.py                           # Flask app
     extract_release.sh               # CLI alternative: extract features from PDF
     extract_release_features.py      # PDF extraction script (requires pdfplumber)
-    pm-highlighted-features.md       # Output: curated PM features with TAGs
     requirements.txt                 # Python dependencies
   FeatureSelection/                  # Step 2: Release note feature selection
     run.sh                           # Launch UI (port 5002)
     app.py                           # Flask app
-    selected_features.md              # Output: selected release note features (markdown)
     requirements.txt                 # Python dependencies
 ```

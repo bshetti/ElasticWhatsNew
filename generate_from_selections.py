@@ -1486,8 +1486,8 @@ def main():
         help="Output HTML file path (default: whats-new-generated.html)"
     )
     parser.add_argument(
-        "--media-dir", default="media",
-        help="Directory for media downloads (default: media/)"
+        "--media-dir", default="liverun/media",
+        help="Directory for media downloads (default: liverun/media/)"
     )
     parser.add_argument(
         "--github-token", default=None,

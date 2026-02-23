@@ -7,7 +7,16 @@
       "Bash(open:*)",
       "WebFetch(domain:github.com)",
       "Bash(chmod:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(kill:*)",
+      "Bash(lsof:*)",
+      "Bash(bash orchestrator/run.sh)",
+      "Bash(gh auth token:*)",
+      "Bash(.venv/bin/python3:*)",
+      "Bash(/opt/homebrew/Cellar/python@3.12/3.12.4/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(ls:*)",
+      "Bash(/Users/bahubalishetti/Documents/code/whatsnew/orchestrator/.venv/bin/python3:*)"
     ]
   }
 }

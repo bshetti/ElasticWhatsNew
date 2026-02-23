@@ -394,7 +394,9 @@ def api_save():
             lines.append("---")
             lines.append("")
 
-    output_path = os.path.join(os.path.dirname(__file__), filename)
+    output_dir = os.environ.get("OUTPUT_DIR", os.path.dirname(__file__))
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, filename)
     with open(output_path, "w") as fp:
         fp.write("\n".join(lines))
 

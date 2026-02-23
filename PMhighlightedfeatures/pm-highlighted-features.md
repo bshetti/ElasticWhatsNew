@@ -39,10 +39,9 @@ Feature freeze: 12/16/2025
 - **Impact:** Medium
 - **Status:** GA
 - **Owner:** Miguel Sánchez
-- **Relevant Links:**
-  - https://www.elastic.co/docs/solutions/observability/infra-and-hosts/discover-metrics
+- **Relevant Links:** (none listed)
 - **TAG** "Infrastructure Monitoring"
-- **Feature Tags:** Metrics Analytics
+- **Feature Tags:** Infrastructure Monitoring
 - **Release:** 9.3
 
 ---
@@ -62,7 +61,7 @@ Feature freeze: 12/16/2025
   - https://github.com/elastic/elasticsearch/issues/136272
   - https://www.elastic.co/docs/reference/query-languages/esql/functions-operators/conditional-functions-and-expressions#esql-clamp
 - **TAG** "Infrastructure Monitoring"
-- **Feature Tags:** Metrics Analytics
+- **Feature Tags:** Infrastructure Monitoring
 - **Release:** 9.3
 
 ---
@@ -76,7 +75,7 @@ Feature freeze: 12/16/2025
 - **Relevant Links:**
   - https://github.com/elastic/elasticsearch/issues/128622
 - **TAG** "Infrastructure Monitoring"
-- **Feature Tags:** Metrics Analytics
+- **Feature Tags:** Infrastructure Monitoring
 - **Release:** 9.3
 
 ---
@@ -90,7 +89,7 @@ Feature freeze: 12/16/2025
 - **Relevant Links:**
   - https://github.com/elastic/elasticsearch/issues/128357
 - **TAG** "Infrastructure Monitoring"
-- **Feature Tags:** Metrics Datastore
+- **Feature Tags:** Infrastructure Monitoring
 - **Release:** 9.3
 
 ---
@@ -104,7 +103,7 @@ Feature freeze: 12/16/2025
 - **Relevant Links:**
   - https://github.com/elastic/elasticsearch/issues/136252
 - **TAG** "Infrastructure Monitoring"
-- **Feature Tags:** Metrics Analytics
+- **Feature Tags:** Infrastructure Monitoring
 - **Release:** 9.3
 
 ---
@@ -115,10 +114,9 @@ Feature freeze: 12/16/2025
 - **Impact:** Large
 - **Status:** Tech Preview, Plea…
 - **Owner:** Tinsae Erkailo
-- **Relevant Links:**
-  - https://www.elastic.co/docs/explore-analyze/workflows
+- **Relevant Links:** (none listed)
 - **TAG** "Agentic Investigations"
-- **Feature Tags:** Workflow
+- **Feature Tags:** AI Assistant
 - **Release:** 9.3
 
 ---
@@ -132,26 +130,12 @@ Feature freeze: 12/16/2025
 - **Relevant Links:**
   - https://github.com/elastic/obs-integration-team/issues/686
 - **TAG** "Agentic Investigations"
-- **Feature Tags:** LLM Obs
+- **Feature Tags:** LLM O11y
 - **Release:** 9.3
 
 ---
 
-## 10. OOTB alert rule templates in integrations
-
-- **Key Messages:** Customers want to set up best practice alerts for their business critical services and resources, but donʼt have the knowledge or observability experience with every service. With alert presets for some of the key integrations, they can now do this with a click of a button and have confidence that they will have adequate observability coverage.
-- **Impact:** Large
-- **Status:** GA
-- **Owner:** Daniela Tzvetk…
-- **Relevant Links:**
-  - https://github.com/elastic/obs-integration-team/issues/464
-- **TAG** "Query, Analysis & Alerting"
-- **Feature Tags:** Alerting
-- **Release:** 9.3
-
----
-
-## 11. Supporting Tagging and Bulk Tagging of Alerts
+## 10. Supporting Tagging and Bulk Tagging of Alerts
 
 - **Key Messages:** The feature addresses a gap in how users organise and work with alerts. Today, alerts inherit rule tags but cannot be further enriched with metadata after they are created, which limits teams trying to classify alerts by ownership, service, triage state or internal workflows. This proposal introduces first class alert tagging in Kibana and via the API, including adding, removing and bulk editing tags, autocomplete suggestions, persistence on the alert document and full support in search, filters and exports. It preserves existing rule tags and aligns with the Security solutionʼs use of workflow tags, giving users a flexible way to segment and manage alerts without changing permissions or migrating to Kibana tags.
 - **Impact:** Small
@@ -159,6 +143,20 @@ Feature freeze: 12/16/2025
 - **Owner:** Drew Post
 - **Relevant Links:**
   - https://github.com/elastic/rna-program/issues/40
+- **TAG** "Agentic Investigations"
+- **Feature Tags:** AI Assistant
+- **Release:** 9.3
+
+---
+
+## 11. OOTB alert rule templates in integrations
+
+- **Key Messages:** Customers want to set up best practice alerts for their business critical services and resources, but donʼt have the knowledge or observability experience with every service. With alert presets for some of the key integrations, they can now do this with a click of a button and have confidence that they will have adequate observability coverage.
+- **Impact:** Large
+- **Status:** GA
+- **Owner:** Daniela Tzvetk…
+- **Relevant Links:**
+  - https://github.com/elastic/obs-integration-team/issues/464
 - **TAG** "Query, Analysis & Alerting"
 - **Feature Tags:** Alerting
 - **Release:** 9.3
@@ -193,7 +191,21 @@ Feature freeze: 12/16/2025
 
 ---
 
-## 14. Find Similar Error Logs for Traces in Discover
+## 14. Manually initiating version rollback of Agent
+
+- **Key Messages:** Enterprise customers have the opportunity to revert the agent version after an upgrade if there are issues.
+- **Impact:** Medium
+- **Status:** GA, Enterprise
+- **Owner:** Nima Rezainia
+- **Relevant Links:**
+  - https://github.com/elastic/ingest-dev/issues/3971
+- **TAG** "OpenTelemetry"
+- **Feature Tags:** OpenTelemetry
+- **Release:** 9.3
+
+---
+
+## 15. Find Similar Error Logs for Traces in Discover
 
 - **Key Messages:** When users find a failed transaction within a trace, itʼs very helpful to understand why it happened, how often it happens and when it started happening. In addition to finding the correlated error logs for a span within a trace directly Discover, you will now see a timeline of how often that error happens and simply click through to query those similar errors.
 - **Impact:** Small
