@@ -21,6 +21,21 @@ else
     echo "  See README.md for setup instructions."
 fi
 
+# Load LLM model config for feature enhancement
+# Supported model formats:
+#   Anthropic: anthropic/claude-haiku-4-5-20251001, anthropic/claude-sonnet-4-5-20250929
+#   OpenAI:    openai/gpt-4o, openai/gpt-4o-mini
+#   Gemini:    gemini/gemini-2.0-flash
+#   Local:     ollama/llama3, ollama/mistral
+export LLM_MODEL="${LLM_MODEL:-anthropic/claude-haiku-4-5-20251001}"
+
+if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${OPENAI_API_KEY:-}" ] || [ -n "${GEMINI_API_KEY:-}" ]; then
+    echo "  LLM enhancement enabled (model: $LLM_MODEL)"
+else
+    echo "  LLM enhancement disabled (no API key found)"
+    echo "  Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY to enable."
+fi
+
 echo ""
 echo "====================================="
 echo "  What's New Orchestrator"

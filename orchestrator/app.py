@@ -45,6 +45,19 @@ from generate_from_selections import (
 from generate_md_from_selections import generate_markdown
 from validate_links import validate_html_file
 
+# LLM enhancement modules (optional — graceful fallback if not installed)
+try:
+    from llm_client import is_llm_available, get_model, enhance_feature
+    LLM_MODULE_AVAILABLE = True
+except ImportError:
+    LLM_MODULE_AVAILABLE = False
+
+try:
+    from context_fetcher import gather_context_for_feature
+    CONTEXT_MODULE_AVAILABLE = True
+except ImportError:
+    CONTEXT_MODULE_AVAILABLE = False
+
 app = Flask(__name__, static_folder="static")
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB max upload
 
@@ -409,6 +422,118 @@ def api_download(filename):
     if not os.path.exists(filepath):
         return jsonify({"error": "File not found"}), 404
     return send_file(filepath, as_attachment=True)
+
+
+# ---------------------------------------------------------------------------
+# LLM Enhancement endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/llm-status")
+def api_llm_status():
+    """Check if LLM enhancement is available."""
+    if not LLM_MODULE_AVAILABLE:
+        return jsonify({"available": False, "model": None, "reason": "llm_client module not loaded"})
+    available = is_llm_available()
+    return jsonify({
+        "available": available,
+        "model": get_model() if available else None,
+        "reason": None if available else "No API key configured",
+    })
+
+
+@app.route("/api/enhance", methods=["POST"])
+def api_enhance():
+    """Enhance a single feature by feature_id."""
+    if not LLM_MODULE_AVAILABLE:
+        return jsonify({"error": "LLM module not available"}), 503
+    if not CONTEXT_MODULE_AVAILABLE:
+        return jsonify({"error": "Context fetcher module not available"}), 503
+
+    data = request.get_json(force=True)
+    feature_id = data.get("feature_id")
+    if feature_id is None:
+        return jsonify({"error": "feature_id is required"}), 400
+
+    if not os.path.exists(FEATURES_JSON):
+        return jsonify({"error": "No features.json found"}), 404
+
+    features_data = _load_features_json()
+    feature = None
+    for f in features_data["features"]:
+        if f["id"] == feature_id:
+            feature = f
+            break
+
+    if feature is None:
+        return jsonify({"error": f"Feature {feature_id} not found"}), 404
+
+    # Gather context from linked PRs and docs
+    context = gather_context_for_feature(feature)
+
+    # Call LLM to enhance
+    result = enhance_feature(
+        title=feature.get("title", ""),
+        description=feature.get("description", ""),
+        pr_bodies=context["pr_bodies"],
+        doc_summaries=context["doc_summaries"],
+        section_name=feature.get("section_name", ""),
+        status=feature.get("status", ""),
+    )
+
+    return jsonify({
+        "feature_id": feature_id,
+        "original_title": feature.get("title", ""),
+        "original_description": feature.get("description", ""),
+        "enhanced_title": result["title"],
+        "enhanced_description": result["description"],
+        "error": result.get("error"),
+        "context_pr_count": len(context["pr_bodies"]),
+        "context_doc_count": len(context["doc_summaries"]),
+    })
+
+
+@app.route("/api/enhance-all", methods=["POST"])
+def api_enhance_all():
+    """Enhance all included features sequentially."""
+    if not LLM_MODULE_AVAILABLE:
+        return jsonify({"error": "LLM module not available"}), 503
+    if not CONTEXT_MODULE_AVAILABLE:
+        return jsonify({"error": "Context fetcher module not available"}), 503
+
+    if not os.path.exists(FEATURES_JSON):
+        return jsonify({"error": "No features.json found"}), 404
+
+    features_data = _load_features_json()
+    included = [f for f in features_data["features"] if f.get("include", True)]
+
+    results = []
+    for feature in included:
+        # Gather context
+        context = gather_context_for_feature(feature)
+
+        # Call LLM
+        result = enhance_feature(
+            title=feature.get("title", ""),
+            description=feature.get("description", ""),
+            pr_bodies=context["pr_bodies"],
+            doc_summaries=context["doc_summaries"],
+            section_name=feature.get("section_name", ""),
+            status=feature.get("status", ""),
+        )
+
+        results.append({
+            "feature_id": feature["id"],
+            "original_title": feature.get("title", ""),
+            "original_description": feature.get("description", ""),
+            "enhanced_title": result["title"],
+            "enhanced_description": result["description"],
+            "error": result.get("error"),
+        })
+
+        # Rate limiting delay between calls
+        time.sleep(0.5)
+
+    return jsonify({"results": results, "total": len(results)})
 
 
 if __name__ == "__main__":
