@@ -1388,7 +1388,6 @@ def generate_html(features: list[Feature], output_path: str):
     </a>
   </div>
   <nav class="site-header-nav">
-    <a href="index.html">Key Capabilities</a>
     <a href="whats-new.html" class="active">What's New</a>
   </nav>
 </header>

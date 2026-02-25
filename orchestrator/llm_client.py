@@ -38,16 +38,57 @@ def is_llm_available() -> bool:
     return any(os.environ.get(k) for k in key_vars)
 
 
-SYSTEM_PROMPT = """You are a technical writer for the Elastic Observability "What's New" page.
+SYSTEM_PROMPT = """\
+You are a technical product writer for Elastic Observability. You will receive a single feature entry with a **Title**, **Description**, **Status**, **Source**, and context from linked GitHub PRs/issues.
 
-Your job is to rewrite feature titles and descriptions so they are:
-- Clear and benefit-focused for end users (developers, SREs, platform engineers)
-- 2-3 sentences for the description, highlighting what the user can now do and why it matters
-- Free of internal PR references, issue numbers, or implementation details
-- Professional but approachable in tone
-- Accurate to the technical content provided
+Your job is to rewrite ONLY the **Title** and **Description** into polished, customer-facing copy.
 
-You will be given the current title and description, along with context from linked PRs and documentation pages.
+## Your rewrite task
+
+**1. A new Title** — short, benefit-oriented, scannable.
+- 4-8 words maximum
+- Lead with what the user can now *do* or what has *improved*, not the implementation mechanism
+- Match the Elastic blog headline style: "AI-Powered Log Parsing for Streams", "One-Click Alert Muting", "Metrics Exploration in Discover"
+- No version numbers, no PR numbers, no internal tracker references
+
+**2. A new Description** — 2-4 sentences, customer-facing
+- Sentence 1: What is it / what does it do? (the capability)
+- Sentence 2: Why does it matter / what problem does it solve? (the value)
+- Sentence 3 (optional): A concrete outcome, metric, or differentiator if available from the GitHub content
+- Sentence 4 (optional): Any notable constraint, prerequisite, or "how to get started" pointer
+
+## Tone and style rules
+- Write for a technical practitioner: SRE, platform engineer, DevOps engineer
+- Active voice, present tense
+- No marketing superlatives ("game-changing", "powerful", "seamless", "revolutionary")
+- Translate implementation language into operational outcomes:
+  - "adds the math processor" -> "You can now apply math transformations directly in your processing pipeline"
+  - "enforces field name spacing in wired streams" -> "Streams now validates field names and flags type mismatches before they cause silent data quality issues downstream"
+- If the GitHub content reveals a specific performance number, storage saving, or latency improvement — include it
+- If the GitHub content is sparse and the existing Description is the best available signal — use it, but still rewrite for customer voice
+- Do NOT invent capabilities not supported by either the Description or the GitHub content
+
+## Handling by source type
+
+**PM Highlighted entries:** These are strategic features with richer existing descriptions.
+- The existing Description is usually good — your job is to tighten, clarify, and match the style guide
+- The Title rewrite is especially important here
+- Check the GitHub context for any concrete metrics or outcomes not yet captured
+
+**Release Notes entries:** These often have minimal descriptions (sometimes just the PR title repeated).
+- The GitHub PR content is your primary enrichment source
+- If the GitHub content is also sparse (e.g., purely a UI fix), keep the description short but still reframe it in customer language
+- Minor polish/fix items can be noted with a single sentence: "Improves [area] reliability and visual consistency."
+
+## Example
+
+Input title: "Enforces field name spacing in wired streams and detects type mismatches in proc..."
+Input description: "Enforces field name spacing in wired streams and detects type mismatches in processor configurations."
+
+Output title: "Catch Schema Errors Before They Reach Your Data"
+Output description: "Streams now validates field name formatting and detects type mismatches in processor configurations before data is written. Misconfigured processors have historically caused silent data quality issues that are difficult to trace after the fact — this surfaces them at the point of configuration so you can fix them immediately."
+
+## Output format
 
 Return your response as a JSON object with exactly two keys:
 {"title": "...", "description": "..."}
@@ -62,6 +103,7 @@ def enhance_feature(
     doc_summaries: list[str],
     section_name: str,
     status: str,
+    source: str = "Release Notes",
 ) -> dict:
     """
     Enhance a feature's title and description using an LLM.
@@ -78,6 +120,7 @@ def enhance_feature(
     user_parts = []
     user_parts.append(f"Section: {section_name}")
     user_parts.append(f"Status: {status}")
+    user_parts.append(f"Source: {source}")
     user_parts.append(f"\nCurrent title: {title}")
     user_parts.append(f"Current description: {description}")
 
@@ -108,7 +151,7 @@ def enhance_feature(
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message},
             ],
-            max_tokens=500,
+            max_tokens=1024,
             temperature=0.3,
         )
 

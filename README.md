@@ -2,13 +2,6 @@
 
 Static site showcasing new features across Elastic Observability releases. Deployed to Netlify.
 
-## Pages
-
-| Page | Description |
-|------|-------------|
-| `index.html` | Key Capabilities overview (landing page) |
-| `whats-new.html` | Auto-generated What's New feature list |
-
 ## Prerequisites
 
 - **Python 3.10+**
@@ -238,7 +231,7 @@ python3 generate_from_selections.py
 cp whats-new-generated.html whats-new.html
 
 # 3. Create the deployment zip
-zip -r whatsnew-netlify.zip index.html whats-new.html favicon.svg grid-bg.svg media/ \
+zip -r whatsnew-netlify.zip whats-new.html favicon.svg grid-bg.svg media/ \
   -x "media/download_results.json" "media/url_mapping.json"
 
 # 4. Upload whatsnew-netlify.zip to Netlify
@@ -257,7 +250,7 @@ whatsnew/
     requirements.txt                 # Python dependencies (flask, certifi, litellm)
   generate_from_selections.py        # HTML generator (merges PM + selected features → HTML)
   generate_md_from_selections.py     # Markdown generator (merges PM + selected features → Markdown)
-  index.html                         # Key Capabilities landing page
+  enhance-prompt.md                  # LLM prompt reference for feature enhancement
   favicon.svg                        # Site favicon
   grid-bg.svg                        # Hero background graphic
   .git-token/                        # GitHub token (not committed)

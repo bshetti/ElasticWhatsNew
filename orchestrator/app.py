@@ -471,6 +471,7 @@ def api_enhance():
     context = gather_context_for_feature(feature)
 
     # Call LLM to enhance
+    source = "PM Highlighted" if feature.get("pm_highlighted") else "Release Notes"
     result = enhance_feature(
         title=feature.get("title", ""),
         description=feature.get("description", ""),
@@ -478,6 +479,7 @@ def api_enhance():
         doc_summaries=context["doc_summaries"],
         section_name=feature.get("section_name", ""),
         status=feature.get("status", ""),
+        source=source,
     )
 
     return jsonify({
@@ -512,6 +514,7 @@ def api_enhance_all():
         context = gather_context_for_feature(feature)
 
         # Call LLM
+        source = "PM Highlighted" if feature.get("pm_highlighted") else "Release Notes"
         result = enhance_feature(
             title=feature.get("title", ""),
             description=feature.get("description", ""),
@@ -519,6 +522,7 @@ def api_enhance_all():
             doc_summaries=context["doc_summaries"],
             section_name=feature.get("section_name", ""),
             status=feature.get("status", ""),
+            source=source,
         )
 
         results.append({
