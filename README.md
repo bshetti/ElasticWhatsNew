@@ -13,6 +13,7 @@ Static site showcasing new features across Elastic Observability releases. Deplo
 
 - **Python 3.10+**
 - **GitHub token** with SSO authorization for the `elastic` org (see [GitHub Token Setup](#github-token-setup) below)
+- **(Optional) LLM API key** for AI-powered feature description enhancement (see [LLM Enhancement Setup](#llm-enhancement-setup) below)
 
 ## GitHub Token Setup
 
@@ -29,6 +30,35 @@ echo "ghp_your_token_here" > .git-token/github.token
 
 The `.git-token/` directory is in `.gitignore` and will never be committed. If no token is provided, the orchestrator will still work but media extraction from GitHub PRs will be skipped.
 
+## LLM Enhancement Setup
+
+The orchestrator includes an optional **Enhance** feature that uses an LLM to rewrite feature titles and descriptions into polished, user-facing copy. It gathers context from linked PRs/issues and documentation pages, then sends it to the LLM for rewriting.
+
+This feature uses [litellm](https://github.com/BerriAI/litellm) for provider flexibility. Set one of the following API key environment variables before launching the orchestrator:
+
+```bash
+# Anthropic (default model: anthropic/claude-haiku-4-5-20251001)
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# OpenAI
+export OPENAI_API_KEY="sk-..."
+
+# Google Gemini
+export GEMINI_API_KEY="..."
+```
+
+To change the model, set the `LLM_MODEL` environment variable:
+
+```bash
+# Examples
+export LLM_MODEL="anthropic/claude-sonnet-4-5-20250929"
+export LLM_MODEL="openai/gpt-4o"
+export LLM_MODEL="gemini/gemini-2.0-flash"
+export LLM_MODEL="ollama/llama3"   # local models via Ollama
+```
+
+If no API key is set, the orchestrator still works — the enhance buttons will simply be disabled.
+
 ## Workflow overview
 
 The recommended way to generate the What's New page is via the **Orchestrator**, which provides a unified UI for the full 5-step workflow:
@@ -37,7 +67,7 @@ The recommended way to generate the What's New page is via the **Orchestrator**,
 Step 1: PM Features UI       ──→  pm-highlighted-features.md
 Step 2: Feature Selection UI  ──→  selected_features.md
 Step 3: Merge + Extract Media ──→  features.json + media files
-Step 4: Edit Features         ──→  edited features.json
+Step 4: Edit & Enhance Features ──→  edited features.json (with optional LLM rewriting)
 Step 5: Generate HTML         ──→  whats-new-generated.html
 ```
 
@@ -221,8 +251,10 @@ whatsnew/
   orchestrator/                      # Unified orchestrator (recommended)
     run.sh                           # Launch all services (ports 5001, 5002, 5003)
     app.py                           # Flask orchestrator app
+    llm_client.py                    # LLM enhancement via litellm
+    context_fetcher.py               # Fetches PR bodies & doc text for LLM context
     static/index.html                # Orchestrator UI
-    requirements.txt                 # Python dependencies
+    requirements.txt                 # Python dependencies (flask, certifi, litellm)
   generate_from_selections.py        # HTML generator (merges PM + selected features → HTML)
   generate_md_from_selections.py     # Markdown generator (merges PM + selected features → Markdown)
   index.html                         # Key Capabilities landing page
@@ -232,6 +264,7 @@ whatsnew/
     github.token                     # SSO-authorized token for elastic org
   liverun/                           # Working directory (not committed)
     features.json                    # Merged features with edits
+    context_cache.json               # Cached PR bodies & doc text for LLM enhancement
     whats-new-merged.md              # Generated markdown
     whats-new-generated.html         # Generated HTML output
     media/                           # Downloaded PR images and videos
