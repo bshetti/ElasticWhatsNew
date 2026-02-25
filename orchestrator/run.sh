@@ -9,6 +9,15 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LIVERUN_DIR="$PROJECT_DIR/liverun"
 mkdir -p "$LIVERUN_DIR/media"
 
+# Load .env file if present
+ENV_FILE="$PROJECT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+    echo "  Loaded environment from .env"
+fi
+
 # Load GitHub token with SSO authorization for elastic org
 GITHUB_TOKEN_FILE="$PROJECT_DIR/.git-token/github.token"
 if [ -f "$GITHUB_TOKEN_FILE" ]; then
